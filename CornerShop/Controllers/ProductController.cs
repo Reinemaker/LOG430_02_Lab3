@@ -169,18 +169,58 @@ public class ProductController : Controller
         return View(product);
     }
 
-    public IActionResult EditGlobal(string id)
+    public async Task<IActionResult> EditGlobal(string id)
     {
-        // TODO: Load product from MongoDB
-        return View(); // Pass product to view
+        var product = await _databaseService.GetProductById(id);
+        if (product == null)
+            return NotFound();
+        return View(product);
     }
 
     [HttpPost]
-    public IActionResult EditGlobal(Product product)
+    // [ValidateAntiForgeryToken] // Temporarily removed for debugging
+    public async Task<IActionResult> EditGlobal(Product product)
     {
-        // TODO: Update product in MongoDB
-        // TODO: Mark product as needing sync to all stores
-        return RedirectToAction("All");
+        Console.WriteLine($"[DEBUG] EditGlobal POST called. Product Id: {product.Id}, Name: {product.Name}");
+        if (ModelState.IsValid)
+        {
+            Console.WriteLine("[DEBUG] ModelState is valid.");
+            var existingProduct = await _databaseService.GetProductById(product.Id);
+            if (existingProduct == null)
+            {
+                Console.WriteLine("[DEBUG] Existing product not found.");
+                return NotFound();
+            }
+
+            // Update properties...
+            existingProduct.Name = product.Name;
+            existingProduct.Category = product.Category;
+            existingProduct.Price = product.Price;
+            existingProduct.StockQuantity = product.StockQuantity;
+            existingProduct.MinimumStockLevel = product.MinimumStockLevel;
+            existingProduct.ReorderPoint = product.ReorderPoint;
+            existingProduct.LastUpdated = DateTime.UtcNow;
+
+            await _databaseService.UpdateProduct(existingProduct);
+            Console.WriteLine("[DEBUG] Product updated and redirecting to All.");
+            return RedirectToAction("All");
+        }
+        else
+        {
+            Console.WriteLine("[DEBUG] ModelState is NOT valid.");
+            foreach (var key in ModelState.Keys)
+            {
+                var errors = ModelState[key]?.Errors;
+                if (errors != null)
+                {
+                    foreach (var error in errors)
+                    {
+                        Console.WriteLine($"[DEBUG] ModelState error for {key}: {error.ErrorMessage}");
+                    }
+                }
+            }
+        }
+        return View(product);
     }
 
     public IActionResult CreateGlobal()
@@ -205,9 +245,14 @@ public class ProductController : Controller
     public async Task<IActionResult> DeleteGlobal(string id)
     {
         var product = await _databaseService.GetProductById(id);
-        if (product == null)
+        if (product != null)
+        {
+            await _databaseService.DeleteProduct(id, product.StoreId);
+        }
+        else
+        {
             return NotFound();
-        await _databaseService.DeleteProduct(id, product.StoreId);
+        }
         return RedirectToAction("All");
     }
 }

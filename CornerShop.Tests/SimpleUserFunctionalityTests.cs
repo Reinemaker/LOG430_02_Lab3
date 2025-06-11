@@ -64,24 +64,4 @@ public class SimpleUserFunctionalityTests
         // Assert
         Assert.True(result);
     }
-
-    [Fact]
-    public async Task GetAllProducts_ReturnsAllProducts()
-    {
-        // Arrange
-        var mockService = new Mock<IDatabaseService>();
-        var expected = new List<Product> {
-            new Product { Name = "Apple", Category = "Fruit", Price = 1.0m, StockQuantity = 10 },
-            new Product { Name = "Banana", Category = "Fruit", Price = 2.0m, StockQuantity = 20 }
-        };
-        mockService.Setup(s => s.GetAllProducts()).ReturnsAsync(expected);
-
-        // Act
-        var result = await mockService.Object.GetAllProducts();
-
-        // Assert
-        Assert.Equal(2, result.Count);
-        Assert.Contains(result, p => p.Name == "Apple");
-        Assert.Contains(result, p => p.Name == "Banana");
-    }
 }

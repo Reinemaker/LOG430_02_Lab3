@@ -12,11 +12,13 @@ namespace CornerShop.Controllers
     {
         private readonly IDatabaseService _databaseService;
         private readonly IStoreService _storeService;
+        private readonly ISaleService _saleService;
 
-        public SaleController(IDatabaseService databaseService, IStoreService storeService)
+        public SaleController(IDatabaseService databaseService, IStoreService storeService, ISaleService saleService)
         {
             _databaseService = databaseService;
             _storeService = storeService;
+            _saleService = saleService;
         }
 
         public async Task<IActionResult> All()
@@ -90,7 +92,7 @@ namespace CornerShop.Controllers
                 Date = DateTime.UtcNow,
                 Status = "Completed"
             };
-            await _databaseService.CreateSale(sale);
+            await _saleService.CreateSale(sale);
             return RedirectToAction("Index", new { storeId });
         }
 

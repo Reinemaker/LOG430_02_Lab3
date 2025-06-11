@@ -9,7 +9,6 @@
     <form asp-action="EditGlobal" method="post">
         @Html.AntiForgeryToken()
         <input type="hidden" asp-for="Id" />
-        <input type="hidden" asp-for="StoreId" />
 
         <div class="form-group">
             <label asp-for="Name"></label>

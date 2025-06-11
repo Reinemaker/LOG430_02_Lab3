@@ -18,6 +18,8 @@ builder.Services.AddScoped<CornerShop.Services.IDatabaseService>(sp =>
     new CornerShop.Services.MongoDatabaseService("mongodb://localhost:27017", "cornerShop"));
 builder.Services.AddSingleton<IStoreService, StoreService>();
 builder.Services.AddScoped<CornerShop.Services.SyncService>();
+builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<ISaleService, SaleService>();
 
 var app = builder.Build();
 

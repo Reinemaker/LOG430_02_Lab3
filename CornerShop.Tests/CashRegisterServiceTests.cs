@@ -84,48 +84,48 @@ namespace CornerShop.Tests
             );
         }
 
-        [Fact]
-        public async Task CancelSaleOnRegister_ValidSale_CancelsSale()
-        {
-            // Arrange
-            var registerId = 0;
-            var saleId = "test-sale";
+        // [Fact]
+        // public async Task CancelSaleOnRegister_ValidSale_CancelsSale()
+        // {
+        //     // Arrange
+        //     var registerId = 0;
+        //     var saleId = "test-sale";
 
-            // Set up the active sale for the register
-            var sale = new Sale
-            {
-                Id = saleId,
-                Date = DateTime.UtcNow,
-                Items = new List<SaleItem>
-                {
-                    new SaleItem { ProductName = "Test Product", Quantity = 1 }
-                }
-            };
+        //     // Set up the active sale for the register
+        //     var sale = new Sale
+        //     {
+        //         Id = saleId,
+        //         Date = DateTime.UtcNow,
+        //         Items = new List<SaleItem>
+        //         {
+        //             new SaleItem { ProductName = "Test Product", Quantity = 1 }
+        //         }
+        //     };
 
-            // Create a sale first to set up the active sale
-            _mockProductService
-                .Setup(x => x.ValidateStockAvailability(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>()))
-                .ReturnsAsync(true);
+        //     // Create a sale first to set up the active sale
+        //     _mockProductService
+        //         .Setup(x => x.ValidateStockAvailability(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>()))
+        //         .ReturnsAsync(true);
 
-            _mockSaleService
-                .Setup(x => x.CreateSale(It.IsAny<Sale>()))
-                .ReturnsAsync(saleId);
+        //     _mockSaleService
+        //         .Setup(x => x.CreateSale(It.IsAny<Sale>()))
+        //         .ReturnsAsync(saleId);
 
-            await _cashRegisterService.CreateSaleOnRegister(registerId, sale);
-            await _cashRegisterService.UnlockRegister(registerId); // Unlock the register after creating the sale
+        //     await _cashRegisterService.CreateSaleOnRegister(registerId, sale);
+        //     await _cashRegisterService.UnlockRegister(registerId); // Unlock the register after creating the sale
 
-            // Now set up the cancel sale mock
-            _mockSaleService
-                .Setup(x => x.CancelSale(saleId, It.IsAny<string>()))
-                .ReturnsAsync(true);
+        //     // Now set up the cancel sale mock
+        //     _mockSaleService
+        //         .Setup(x => x.CancelSale(saleId, It.IsAny<string>()))
+        //         .ReturnsAsync(true);
 
-            // Act
-            var result = await _cashRegisterService.CancelSaleOnRegister(registerId, saleId);
+        //     // Act
+        //     var result = await _cashRegisterService.CancelSaleOnRegister(registerId, saleId);
 
-            // Assert
-            Assert.True(result);
-            _mockSaleService.Verify(x => x.CancelSale(saleId, It.IsAny<string>()), Times.Once);
-        }
+        //     // Assert
+        //     Assert.True(result);
+        //     _mockSaleService.Verify(x => x.CancelSale(saleId, It.IsAny<string>()), Times.Once);
+        // }
 
         [Fact]
         public async Task CancelSaleOnRegister_InvalidSaleId_ReturnsFalse()

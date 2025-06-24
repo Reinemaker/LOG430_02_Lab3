@@ -218,6 +218,9 @@ public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
         _client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
+        // Ensure the store with ID 'test-store' exists
+        await EnsureStoreExists("test-store", token);
+
         // Act
         var response = await _client.GetAsync("/api/v1/sales/store/test-store/recent");
 
@@ -346,6 +349,21 @@ public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
         }
 
         return string.Empty;
+    }
+
+    private async Task EnsureStoreExists(string storeId, string token)
+    {
+        var store = new Store
+        {
+            Id = storeId,
+            Name = "Test Store",
+            Location = "Test Location",
+            Address = "123 Test Street"
+        };
+        _client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        var response = await _client.PostAsJsonAsync("/api/v1/stores", store);
+        // Ignore if already exists or created
     }
 }
 

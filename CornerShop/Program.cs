@@ -8,16 +8,13 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllersWithViews()
-    .AddRazorRuntimeCompilation();
-
-// Add API controllers with content negotiation
-builder.Services.AddControllers(options =>
+builder.Services.AddControllersWithViews(options =>
 {
     // Add content negotiation
     options.RespectBrowserAcceptHeader = true;
     options.ReturnHttpNotAcceptable = true;
 })
+.AddRazorRuntimeCompilation()
 .AddXmlDataContractSerializerFormatters() // Support XML format
 .AddJsonOptions(options =>
 {
@@ -78,6 +75,10 @@ builder.Services.AddScoped<ISaleService, SaleService>();
 
 // Add JWT authentication
 var jwtSettings = builder.Configuration.GetSection("Jwt");
+var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey is not configured");
+var issuer = jwtSettings["Issuer"] ?? throw new InvalidOperationException("JWT Issuer is not configured");
+var audience = jwtSettings["Audience"] ?? throw new InvalidOperationException("JWT Audience is not configured");
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -91,9 +92,9 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtSettings["Issuer"],
-        ValidAudience = jwtSettings["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]))
+        ValidIssuer = issuer,
+        ValidAudience = audience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
     };
 });
 
@@ -104,6 +105,7 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
+    app.UseHttpsRedirection();
 }
 
 // Global exception handler for API endpoints
@@ -138,7 +140,6 @@ app.Use(async (context, next) =>
     }
 });
 
-app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
@@ -174,14 +175,26 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 // Initialize database
-var dbService = app.Services.GetRequiredService<IDatabaseService>();
-await dbService.InitializeDatabase();
-
-var storeService = app.Services.GetRequiredService<IStoreService>();
-var stores = await storeService.GetAllStores();
-foreach (var store in stores)
+using (var scope = app.Services.CreateScope())
 {
-    CornerShop.Services.LocalStoreDatabaseHelper.CreateLocalDatabaseForStore(store.Id);
+    var dbService = scope.ServiceProvider.GetRequiredService<IDatabaseService>();
+    await dbService.InitializeDatabase();
+
+    // Clear existing collections to avoid ObjectId format conflicts
+    var mongoDb = scope.ServiceProvider.GetRequiredService<IMongoDatabase>();
+    await mongoDb.DropCollectionAsync("stores");
+    await mongoDb.DropCollectionAsync("products");
+    await mongoDb.DropCollectionAsync("sales");
+
+    // Re-initialize after clearing
+    await dbService.InitializeDatabase();
+
+    var storeService = scope.ServiceProvider.GetRequiredService<IStoreService>();
+    var stores = await storeService.GetAllStores();
+    foreach (var store in stores)
+    {
+        CornerShop.Services.LocalStoreDatabaseHelper.CreateLocalDatabaseForStore(store.Id);
+    }
 }
 
 app.Run();

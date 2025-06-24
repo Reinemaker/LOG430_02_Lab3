@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 namespace CornerShop.Controllers.Api;
 
 [ApiController]
-[Route("api/v1/[controller]")]
+[Route("api/v1/stores")]
 [Produces("application/json")]
 [EnableCors("ApiPolicy")]
 [Authorize]
@@ -64,8 +64,8 @@ public class StoresApiController : ControllerBase
             Data = paged,
             Links = new List<Link>
             {
-                new Link { Href = Url.Action(nameof(GetAllStores), new { page, pageSize, sortBy, sortOrder, searchTerm }), Rel = "self", Method = "GET" },
-                new Link { Href = Url.Action(nameof(CreateStore)), Rel = "create", Method = "POST" }
+                new Link { Href = Url.Action(nameof(GetAllStores), new { page, pageSize, sortBy, sortOrder, searchTerm }) ?? "", Rel = "self", Method = "GET" },
+                new Link { Href = Url.Action(nameof(CreateStore)) ?? "", Rel = "create", Method = "POST" }
             }
         };
         return Ok(response);
@@ -101,10 +101,10 @@ public class StoresApiController : ControllerBase
             Data = store,
             Links = new List<Link>
             {
-                new Link { Href = Url.Action(nameof(GetStore), new { id }), Rel = "self", Method = "GET" },
-                new Link { Href = Url.Action(nameof(UpdateStore), new { id }), Rel = "update", Method = "PUT" },
-                new Link { Href = Url.Action(nameof(PatchStore), new { id }), Rel = "patch", Method = "PATCH" },
-                new Link { Href = Url.Action(nameof(DeleteStore), new { id }), Rel = "delete", Method = "DELETE" }
+                new Link { Href = Url.Action(nameof(GetStore), new { id }) ?? "", Rel = "self", Method = "GET" },
+                new Link { Href = Url.Action(nameof(UpdateStore), new { id }) ?? "", Rel = "update", Method = "PUT" },
+                new Link { Href = Url.Action(nameof(PatchStore), new { id }) ?? "", Rel = "patch", Method = "PATCH" },
+                new Link { Href = Url.Action(nameof(DeleteStore), new { id }) ?? "", Rel = "delete", Method = "DELETE" }
             }
         };
 
@@ -121,40 +121,76 @@ public class StoresApiController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<Store>>> CreateStore([FromBody] Store store)
     {
-        if (!ModelState.IsValid)
+        try
         {
-            var errors = ModelState.Values
-                .SelectMany(v => v.Errors)
-                .Select(e => e.ErrorMessage)
-                .ToList();
+            Console.WriteLine($"CreateStore called with store: {store?.Name}");
 
-            return BadRequest(new ErrorResponse
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .ToList();
+
+                Console.WriteLine($"CreateStore validation errors: {string.Join(", ", errors)}");
+                return BadRequest(new ErrorResponse
+                {
+                    Timestamp = DateTime.UtcNow,
+                    Status = 400,
+                    Error = "Bad Request",
+                    Message = string.Join("; ", errors),
+                    Path = Request.Path
+                });
+            }
+
+            if (store == null)
+            {
+                return BadRequest(new ErrorResponse
+                {
+                    Timestamp = DateTime.UtcNow,
+                    Status = 400,
+                    Error = "Bad Request",
+                    Message = "Store data is required",
+                    Path = Request.Path
+                });
+            }
+
+            if (string.IsNullOrEmpty(store.Id))
+            {
+                store.Id = Guid.NewGuid().ToString();
+            }
+            store.LastSyncTime = DateTime.UtcNow;
+
+            Console.WriteLine($"CreateStore calling store service with ID: {store.Id}");
+            await _storeService.CreateStore(store);
+            Console.WriteLine($"CreateStore successfully created store: {store.Id}");
+
+            var response = new ApiResponse<Store>
+            {
+                Data = store,
+                Links = new List<Link>
+                {
+                    new Link { Href = Url.Action(nameof(GetStore), new { id = store.Id }) ?? "", Rel = "self", Method = "GET" },
+                    new Link { Href = Url.Action(nameof(UpdateStore), new { id = store.Id }) ?? "", Rel = "update", Method = "PUT" },
+                    new Link { Href = Url.Action(nameof(DeleteStore), new { id = store.Id }) ?? "", Rel = "delete", Method = "DELETE" }
+                }
+            };
+
+            return CreatedAtAction(nameof(GetStore), new { id = store.Id }, response);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"CreateStore error: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return StatusCode(500, new ErrorResponse
             {
                 Timestamp = DateTime.UtcNow,
-                Status = 400,
-                Error = "Bad Request",
-                Message = string.Join("; ", errors),
+                Status = 500,
+                Error = "Internal Server Error",
+                Message = ex.Message,
                 Path = Request.Path
             });
         }
-
-        store.Id = Guid.NewGuid().ToString();
-        store.LastSyncTime = DateTime.UtcNow;
-
-        await _storeService.CreateStore(store);
-
-        var response = new ApiResponse<Store>
-        {
-            Data = store,
-            Links = new List<Link>
-            {
-                new Link { Href = Url.Action(nameof(GetStore), new { id = store.Id }), Rel = "self", Method = "GET" },
-                new Link { Href = Url.Action(nameof(UpdateStore), new { id = store.Id }), Rel = "update", Method = "PUT" },
-                new Link { Href = Url.Action(nameof(DeleteStore), new { id = store.Id }), Rel = "delete", Method = "DELETE" }
-            }
-        };
-
-        return CreatedAtAction(nameof(GetStore), new { id = store.Id }, response);
     }
 
     /// <summary>
@@ -326,8 +362,8 @@ public class StoresApiController : ControllerBase
             Data = paged,
             Links = new List<Link>
             {
-                new Link { Href = Url.Action(nameof(SearchStores), new { searchTerm, page, pageSize, sortBy, sortOrder }), Rel = "self", Method = "GET" },
-                new Link { Href = Url.Action(nameof(GetAllStores)), Rel = "all-stores", Method = "GET" }
+                new Link { Href = Url.Action(nameof(SearchStores), new { searchTerm, page, pageSize, sortBy, sortOrder }) ?? "", Rel = "self", Method = "GET" },
+                new Link { Href = Url.Action(nameof(GetAllStores)) ?? "", Rel = "all-stores", Method = "GET" }
             }
         };
         return Ok(response);

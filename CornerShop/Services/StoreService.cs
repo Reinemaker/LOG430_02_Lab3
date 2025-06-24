@@ -21,14 +21,12 @@ public class StoreService : IStoreService
     private readonly IMongoCollection<Store> _stores;
     private readonly IMongoCollection<Product> _products;
     private readonly IMongoCollection<Sale> _sales;
-    private readonly IDatabaseService _databaseService;
 
-    public StoreService(IMongoDatabase database, IDatabaseService databaseService)
+    public StoreService(IMongoDatabase database)
     {
         _stores = database.GetCollection<Store>("stores");
         _products = database.GetCollection<Product>("products");
         _sales = database.GetCollection<Sale>("sales");
-        _databaseService = databaseService;
     }
 
     public async Task<List<Store>> GetAllStores()

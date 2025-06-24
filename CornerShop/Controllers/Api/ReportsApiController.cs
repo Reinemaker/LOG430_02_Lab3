@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 namespace CornerShop.Controllers.Api;
 
 [ApiController]
-[Route("api/v1/[controller]")]
+[Route("api/v1/reports")]
 [Produces("application/json")]
 [EnableCors("ApiPolicy")]
 [Authorize]
@@ -38,6 +38,22 @@ public class ReportsApiController : ControllerBase
         [FromQuery] DateTime? endDate = null)
     {
         var stores = await _storeService.GetAllStores();
+        if (stores == null || stores.Count == 0)
+        {
+            return Ok(new ApiResponse<ConsolidatedSalesReport>
+            {
+                Data = new ConsolidatedSalesReport
+                {
+                    StartDate = startDate ?? DateTime.UtcNow,
+                    EndDate = endDate ?? DateTime.UtcNow,
+                    TotalSales = 0,
+                    TotalRevenue = 0,
+                    AverageSaleAmount = 0,
+                    StoreReports = new List<StoreSalesReport>()
+                },
+                Links = new List<Link>()
+            });
+        }
         var allSales = new List<Sale>();
 
         // Get sales from all stores
@@ -59,8 +75,8 @@ public class ReportsApiController : ControllerBase
 
         var report = new ConsolidatedSalesReport
         {
-            StartDate = startDate ?? allSales.Min(s => s.Date),
-            EndDate = endDate ?? allSales.Max(s => s.Date),
+            StartDate = startDate ?? (allSales.Any() ? allSales.Min(s => s.Date) : DateTime.UtcNow),
+            EndDate = endDate ?? (allSales.Any() ? allSales.Max(s => s.Date) : DateTime.UtcNow),
             TotalSales = allSales.Count,
             TotalRevenue = allSales.Sum(s => s.TotalAmount),
             AverageSaleAmount = allSales.Any() ? allSales.Average(s => s.TotalAmount) : 0,
@@ -87,10 +103,10 @@ public class ReportsApiController : ControllerBase
             Data = report,
             Links = new List<Link>
             {
-                new Link { Href = Url.Action(nameof(GetConsolidatedSalesReport), new { startDate, endDate }), Rel = "self", Method = "GET" },
-                new Link { Href = Url.Action(nameof(GetInventoryReport)), Rel = "inventory", Method = "GET" },
-                new Link { Href = Url.Action(nameof(GetTopSellingProducts)), Rel = "top-products", Method = "GET" },
-                new Link { Href = Url.Action(nameof(GetSalesTrendReport)), Rel = "trend", Method = "GET" }
+                new Link { Href = Url.Action(nameof(GetConsolidatedSalesReport), new { startDate, endDate }) ?? "", Rel = "self", Method = "GET" },
+                new Link { Href = Url.Action(nameof(GetInventoryReport)) ?? "", Rel = "inventory", Method = "GET" },
+                new Link { Href = Url.Action(nameof(GetTopSellingProducts)) ?? "", Rel = "top-selling", Method = "GET" },
+                new Link { Href = Url.Action(nameof(GetSalesTrendReport)) ?? "", Rel = "trend", Method = "GET" }
             }
         };
 
@@ -139,9 +155,9 @@ public class ReportsApiController : ControllerBase
             Data = report,
             Links = new List<Link>
             {
-                new Link { Href = Url.Action(nameof(GetInventoryReport)), Rel = "self", Method = "GET" },
-                new Link { Href = Url.Action(nameof(GetConsolidatedSalesReport)), Rel = "sales", Method = "GET" },
-                new Link { Href = Url.Action(nameof(GetTopSellingProducts)), Rel = "top-products", Method = "GET" }
+                new Link { Href = Url.Action(nameof(GetInventoryReport)) ?? "", Rel = "self", Method = "GET" },
+                new Link { Href = Url.Action(nameof(GetConsolidatedSalesReport)) ?? "", Rel = "sales", Method = "GET" },
+                new Link { Href = Url.Action(nameof(GetTopSellingProducts)) ?? "", Rel = "top-selling", Method = "GET" }
             }
         };
 
@@ -200,9 +216,9 @@ public class ReportsApiController : ControllerBase
             Data = productSales,
             Links = new List<Link>
             {
-                new Link { Href = Url.Action(nameof(GetTopSellingProducts), new { limit, storeId }), Rel = "self", Method = "GET" },
-                new Link { Href = Url.Action(nameof(GetConsolidatedSalesReport)), Rel = "sales", Method = "GET" },
-                new Link { Href = Url.Action(nameof(GetInventoryReport)), Rel = "inventory", Method = "GET" }
+                new Link { Href = Url.Action(nameof(GetTopSellingProducts), new { limit, storeId }) ?? "", Rel = "self", Method = "GET" },
+                new Link { Href = Url.Action(nameof(GetConsolidatedSalesReport)) ?? "", Rel = "sales", Method = "GET" },
+                new Link { Href = Url.Action(nameof(GetInventoryReport)) ?? "", Rel = "inventory", Method = "GET" }
             }
         };
 
@@ -307,9 +323,9 @@ public class ReportsApiController : ControllerBase
             Data = trendReports,
             Links = new List<Link>
             {
-                new Link { Href = Url.Action(nameof(GetSalesTrendReport), new { period, startDate, endDate }), Rel = "self", Method = "GET" },
-                new Link { Href = Url.Action(nameof(GetConsolidatedSalesReport)), Rel = "sales", Method = "GET" },
-                new Link { Href = Url.Action(nameof(GetTopSellingProducts)), Rel = "top-products", Method = "GET" }
+                new Link { Href = Url.Action(nameof(GetSalesTrendReport), new { period, startDate, endDate }) ?? "", Rel = "self", Method = "GET" },
+                new Link { Href = Url.Action(nameof(GetConsolidatedSalesReport)) ?? "", Rel = "sales", Method = "GET" },
+                new Link { Href = Url.Action(nameof(GetTopSellingProducts)) ?? "", Rel = "top-selling", Method = "GET" }
             }
         };
 

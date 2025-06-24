@@ -6,8 +6,8 @@ namespace CornerShop.Models;
 public class Sale
 {
     [BsonId]
-    [BsonRepresentation(BsonType.ObjectId)]
-    public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
+    [BsonRepresentation(BsonType.String)]
+    public string Id { get; set; } = string.Empty;
 
     [BsonElement("storeId")]
     public string StoreId { get; set; } = string.Empty;

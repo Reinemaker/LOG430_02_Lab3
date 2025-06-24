@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 namespace CornerShop.Controllers.Api;
 
 [ApiController]
-[Route("api/v1/[controller]")]
+[Route("api/v1/sales")]
 [Produces("application/json")]
 [EnableCors("ApiPolicy")]
 [Authorize]
@@ -46,39 +46,69 @@ public class SalesApiController : ControllerBase
         [FromQuery] string sortBy = "Date",
         [FromQuery] string sortOrder = "desc")
     {
-        var store = await _storeService.GetStoreById(storeId);
-        if (store == null)
+        try
         {
-            return NotFound(new ErrorResponse
+            Console.WriteLine($"GetRecentSales called with storeId: {storeId}, limit: {limit}, page: {page}");
+
+            var store = await _storeService.GetStoreById(storeId);
+            if (store == null)
+            {
+                Console.WriteLine($"GetRecentSales store not found: {storeId}");
+                return NotFound(new ErrorResponse
+                {
+                    Timestamp = DateTime.UtcNow,
+                    Status = 404,
+                    Error = "Not Found",
+                    Message = $"Store with ID {storeId} not found",
+                    Path = Request.Path
+                });
+            }
+
+            Console.WriteLine($"GetRecentSales store found: {store.Name}");
+            var sales = await _saleService.GetRecentSales(storeId, Math.Max(limit, page * pageSize));
+            Console.WriteLine($"GetRecentSales found {sales?.Count ?? 0} sales");
+
+            if (sales == null)
+            {
+                sales = new List<Sale>();
+            }
+            // Sorting
+            sales = sortBy.ToLower() switch
+            {
+                "date" => (sortOrder == "asc" ? sales.OrderBy(s => s.Date) : sales.OrderByDescending(s => s.Date)).ToList(),
+                "totalamount" => (sortOrder == "asc" ? sales.OrderBy(s => s.TotalAmount) : sales.OrderByDescending(s => s.TotalAmount)).ToList(),
+                _ => sales.OrderByDescending(s => s.Date).ToList()
+            };
+
+            // Pagination
+            var paged = sales.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+            Console.WriteLine($"GetRecentSales returning {paged.Count} sales after pagination");
+
+            var response = new ApiResponse<IEnumerable<Sale>>
+            {
+                Data = paged,
+                Links = new List<Link>
+                {
+                    new Link { Href = Url.Action(nameof(GetRecentSales), new { storeId, limit, page, pageSize, sortBy, sortOrder }) ?? "", Rel = "self", Method = "GET" },
+                    new Link { Href = Url.Action(nameof(CreateSale)) ?? "", Rel = "create", Method = "POST" },
+                    new Link { Href = Url.Action(nameof(GetSalesByDateRange), new { storeId }) ?? "", Rel = "date-range", Method = "GET" }
+                }
+            };
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"GetRecentSales error: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return StatusCode(500, new ErrorResponse
             {
                 Timestamp = DateTime.UtcNow,
-                Status = 404,
-                Error = "Not Found",
-                Message = $"Store with ID {storeId} not found",
+                Status = 500,
+                Error = "Internal Server Error",
+                Message = ex.Message,
                 Path = Request.Path
             });
         }
-        var sales = await _saleService.GetRecentSales(storeId, Math.Max(limit, page * pageSize));
-        // Sorting
-        sales = sortBy.ToLower() switch
-        {
-            "date" => (sortOrder == "asc" ? sales.OrderBy(s => s.Date) : sales.OrderByDescending(s => s.Date)).ToList(),
-            "totalamount" => (sortOrder == "asc" ? sales.OrderBy(s => s.TotalAmount) : sales.OrderByDescending(s => s.TotalAmount)).ToList(),
-            _ => sales.OrderByDescending(s => s.Date).ToList()
-        };
-        // Pagination
-        var paged = sales.Skip((page - 1) * pageSize).Take(pageSize).ToList();
-        var response = new ApiResponse<IEnumerable<Sale>>
-        {
-            Data = paged,
-            Links = new List<Link>
-            {
-                new Link { Href = Url.Action(nameof(GetRecentSales), new { storeId, limit, page, pageSize, sortBy, sortOrder }), Rel = "self", Method = "GET" },
-                new Link { Href = Url.Action(nameof(CreateSale)), Rel = "create", Method = "POST" },
-                new Link { Href = Url.Action(nameof(GetSalesByDateRange), new { storeId }), Rel = "date-range", Method = "GET" }
-            }
-        };
-        return Ok(response);
     }
 
     /// <summary>
@@ -110,9 +140,9 @@ public class SalesApiController : ControllerBase
             Data = sale,
             Links = new List<Link>
             {
-                new Link { Href = Url.Action(nameof(GetSale), new { id }), Rel = "self", Method = "GET" },
-                new Link { Href = Url.Action(nameof(GetSaleDetails), new { id }), Rel = "details", Method = "GET" },
-                new Link { Href = Url.Action(nameof(CancelSale), new { id }), Rel = "cancel", Method = "POST" }
+                new Link { Href = Url.Action(nameof(GetSale), new { id }) ?? "", Rel = "self", Method = "GET" },
+                new Link { Href = Url.Action(nameof(GetSaleDetails), new { id }) ?? "", Rel = "details", Method = "GET" },
+                new Link { Href = Url.Action(nameof(CancelSale), new { id }) ?? "", Rel = "cancel", Method = "POST" }
             }
         };
 
@@ -165,9 +195,9 @@ public class SalesApiController : ControllerBase
             Data = saleDetails,
             Links = new List<Link>
             {
-                new Link { Href = Url.Action(nameof(GetSaleDetails), new { id }), Rel = "self", Method = "GET" },
-                new Link { Href = Url.Action(nameof(GetSale), new { id }), Rel = "sale", Method = "GET" },
-                new Link { Href = Url.Action(nameof(CancelSale), new { id }), Rel = "cancel", Method = "POST" }
+                new Link { Href = Url.Action(nameof(GetSaleDetails), new { id }) ?? "", Rel = "self", Method = "GET" },
+                new Link { Href = Url.Action(nameof(GetSale), new { id }) ?? "", Rel = "sale", Method = "GET" },
+                new Link { Href = Url.Action(nameof(CancelSale), new { id }) ?? "", Rel = "cancel", Method = "POST" }
             }
         };
 
@@ -251,9 +281,9 @@ public class SalesApiController : ControllerBase
             Data = sale,
             Links = new List<Link>
             {
-                new Link { Href = Url.Action(nameof(GetSale), new { id = sale.Id }), Rel = "self", Method = "GET" },
-                new Link { Href = Url.Action(nameof(GetSaleDetails), new { id = sale.Id }), Rel = "details", Method = "GET" },
-                new Link { Href = Url.Action(nameof(CancelSale), new { id = sale.Id }), Rel = "cancel", Method = "POST" }
+                new Link { Href = Url.Action(nameof(GetSale), new { id = sale.Id }) ?? "", Rel = "self", Method = "GET" },
+                new Link { Href = Url.Action(nameof(GetSaleDetails), new { id = sale.Id }) ?? "", Rel = "details", Method = "GET" },
+                new Link { Href = Url.Action(nameof(CancelSale), new { id = sale.Id }) ?? "", Rel = "cancel", Method = "POST" }
             }
         };
 
@@ -368,8 +398,8 @@ public class SalesApiController : ControllerBase
             Data = paged,
             Links = new List<Link>
             {
-                new Link { Href = Url.Action(nameof(GetSalesByDateRange), new { startDate, endDate, storeId, page, pageSize, sortBy, sortOrder }), Rel = "self", Method = "GET" },
-                new Link { Href = Url.Action(nameof(CreateSale)), Rel = "create", Method = "POST" }
+                new Link { Href = Url.Action(nameof(GetSalesByDateRange), new { startDate, endDate, storeId, page, pageSize, sortBy, sortOrder }) ?? "", Rel = "self", Method = "GET" },
+                new Link { Href = Url.Action(nameof(CreateSale)) ?? "", Rel = "create", Method = "POST" }
             }
         };
         return Ok(response);

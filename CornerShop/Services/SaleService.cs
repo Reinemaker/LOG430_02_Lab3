@@ -99,5 +99,22 @@ namespace CornerShop.Services
 
             return true;
         }
+
+        public async Task<bool> UpdateSale(Sale sale)
+        {
+            if (sale == null)
+                throw new ArgumentNullException(nameof(sale));
+
+            if (string.IsNullOrWhiteSpace(sale.Id))
+                throw new ArgumentException("Sale ID cannot be empty", nameof(sale));
+
+            // Verify the sale exists
+            var existingSale = await GetSaleById(sale.Id);
+            if (existingSale == null)
+                return false;
+
+            // Update the sale in the database
+            return await _databaseService.UpdateSale(sale);
+        }
     }
 }

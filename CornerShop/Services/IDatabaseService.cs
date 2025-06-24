@@ -21,5 +21,5 @@ public interface IDatabaseService
     Task<List<Sale>> GetAllSales();
     Task DeleteProduct(string id, string storeId);
     Task UpdateProduct(Product product);
-    Task UpdateSale(Sale sale);
+    Task<bool> UpdateSale(Sale sale);
 }

@@ -216,9 +216,10 @@ public class DatabaseService : IDatabaseService
         await _products.ReplaceOneAsync(filter, product);
     }
 
-    public async Task UpdateSale(Sale sale)
+    public async Task<bool> UpdateSale(Sale sale)
     {
         var filter = Builders<Sale>.Filter.Eq(s => s.Id, sale.Id);
-        await _sales.ReplaceOneAsync(filter, sale);
+        var result = await _sales.ReplaceOneAsync(filter, sale);
+        return result.ModifiedCount > 0;
     }
 }

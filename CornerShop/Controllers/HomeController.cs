@@ -47,4 +47,9 @@ public class HomeController : Controller
         var report = await _databaseService.GetConsolidatedReport(startDate.Value, endDate.Value);
         return View(report);
     }
+
+    public IActionResult ApiDocumentation()
+    {
+        return View();
+    }
 }
